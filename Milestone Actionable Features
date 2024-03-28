@@ -2,6 +2,15 @@ Milestone Actionable Features
 
 1. Interfacing with an RC car.
     a. Dismantle a premade car and study its components.
-2. Entire circuit complete, with programming started, for screen implementation.
-3. Finish programming, start debugging and testing on a mock car.
-4. Finish the project by having a functioning car.
+    b. Figure out where the reciever of the car is and determine what kind such that we can begin programming the microcontroller to control the car instead of the remote it has.
+    c. Get the the transmitter/reciever of the microcontroller/RC car talking to the other device.
+        i. i.e., Establish a connection between the two devices.
+2. Implement accelerator function.
+    a. Start with very simple commands-make the car go forward or backwards.
+    b. Implement the ability to adjust the speed of the car while going forward or backwards.
+        i. Make use of the motor circuit created for class (?) since it has an encoder.
+3. Rotation/turning the car.
+    a. Turn a stepper motor (?) in the commanded direction to change wheel direction.
+    b. Left/right commands given by certain push buttons (?) or the directioinal button on the STM Discovery.
+4. Obstacle sensing/Finish debug for final presentation.
+    a. Would require additional sensors to add to the RC car circuit (?) to sense when collision is imminent and take action to avoid the obstacle.
