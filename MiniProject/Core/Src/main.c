@@ -78,8 +78,25 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
+	
+	
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN | RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN;
+	GPIOA->MODER &= ~(1<<0 | 1<<1);
+	GPIOA->OSPEEDR &= ~(1<<0);
+  GPIOA->PUPDR  |= (1<<1);
   /* USER CODE BEGIN SysInit */
 
+        GPIOC->MODER |= (1<<12 | 1<<14);
+        GPIOC->OTYPER &= ~(1<<6 | 1<<7);
+        GPIOC->OSPEEDR &= ~(1<<12 | 1<<14);
+        GPIOC->PUPDR &= ~(1<<12 | 1<<14 | 1<<13 | 1<<15);
+        GPIOC->ODR |= ( 1<<7);
+				
+        GPIOD->MODER |= (1<<14);
+        GPIOD->OTYPER &= ~( 1<<7);
+        GPIOD->OSPEEDR &= ~(1<<14);
+        GPIOD->PUPDR &= ~( 1<<14  | 1<<15);
+        GPIOD->ODR |= ( 1<<7);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -89,13 +106,23 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+	uint32_t debouncer = 0;
+	uint32_t input_signal = 0;
+	while(1){
+            debouncer = (debouncer << 1); // Always shift every loop iteration
+            input_signal = (GPIOA->IDR)&(0x01);
 
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
+            if (input_signal) { // If input signal is set/high
+                debouncer |= 0x01; // Set lowest bit of bit-vector
+            }
+            if (debouncer == 0x7FFFFFFF) {
+             //This code triggers only once when transitioning to steady high!
+                GPIOD->ODR ^= ( 1<<7);
+								GPIOC->ODR ^= (1<<7);
+            }
+            // When button is bouncing the bit-vector value is random since bits are set when
+            //the button is high and not when it bounces low.
+        }
 }
 
 /**
