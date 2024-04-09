@@ -78,8 +78,34 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
+	
+	
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN  | RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN;
   /* USER CODE BEGIN SysInit */
 
+				GPIOA->MODER &= ~(1<<0 | 1<<1);
+        GPIOA->OSPEEDR &= ~(1<<0);
+        GPIOA->PUPDR  |= (1<<1);
+				
+        GPIOC->MODER |= (1<<12 | 1<<14 | 1<<16 | 1<<18);
+        GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
+        GPIOC->OSPEEDR &= ~(1<<12 | 1<<14 | 1<<16 | 1<<18);
+        GPIOC->PUPDR &= ~(1<<12 | 1<<14 | 1<<13 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19);
+        GPIOC->ODR |= (1<<6 |1<< 8 );
+				
+				//USING  PB6789 AS OUTPUTS
+				GPIOB->MODER |= (1<< 12| 1<< 14| 1<< 16| 1<< 18); //general out
+				GPIOB->OTYPER |= (1<<6|1<<7|1<<8|1<<9);//open drain
+				GPIOB->OSPEEDR &= ~ (1<< 12 | 1<<14 | 1<<16 | 1<<18);
+				GPIOB->PUPDR &= ~(1<<12| 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18| 1<<19);
+				GPIOB->ODR |= ( 1<<6|1<<8 );
+				//PB9 is R
+				//PB8 is L
+				//PB7 is Forward
+				//PB6 is Backward
+				
+				
+				
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -89,13 +115,32 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+	uint32_t debouncer = 0;
+	uint32_t input_signal = 0;
+	while(1){
+            debouncer = (debouncer << 1); // Always shift every loop iteration
+            input_signal = (GPIOA->IDR)&(0x01);
 
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
+            if (input_signal) { // If input signal is set/high
+                debouncer |= 0x01; // Set lowest bit of bit-vector
+            }
+            if (debouncer == 0x7FFFFFFF) {
+             //This code triggers only once when transitioning to steady high!
+                GPIOB->ODR ^= (1<<6);
+								GPIOC->ODR ^= (1<<6);
+							
+							GPIOB->ODR ^= (1<<7);
+								GPIOC->ODR ^= (1<<7);
+							
+							GPIOB->ODR ^= (1<<8);
+								GPIOC->ODR ^= (1<<8);
+							
+							GPIOB->ODR ^= (1<<9);
+								GPIOC->ODR ^= (1<<9);
+            }
+            // When button is bouncing the bit-vector value is random since bits are set when
+            //the button is high and not when it bounces low.
+        }
 }
 
 /**
