@@ -1,4 +1,3 @@
-/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -15,134 +14,85 @@
   *
   ******************************************************************************
   */
-/* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
-  /* USER CODE BEGIN 1 */
+int main(void) {
+  HAL_Init();		// Reset of all peripherals, Initializes the Flash interface and the Systick.
 
-  /* USER CODE END 1 */
+  SystemClock_Config();			// configure system clock
 
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-	
-	
+	// enable the clocks
 	RCC->AHBENR |= RCC_AHBENR_GPIOCEN  | RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN;
-  /* USER CODE BEGIN SysInit */
 
-				GPIOA->MODER &= ~(1<<0 | 1<<1);
-        GPIOA->OSPEEDR &= ~(1<<0);
-        GPIOA->PUPDR  |= (1<<1);
+	// A outputs
+	GPIOA->MODER &= ~(1<<0 | 1<<1);
+	GPIOA->OSPEEDR &= ~(1<<0);
+	GPIOA->PUPDR  |= (1<<1);
+	
+	// C outputs - turning on the LEDs to correspond the the outputs
+	GPIOC->MODER |= (1<<12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
+	GPIOC->OSPEEDR &= ~(1<<12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOC->PUPDR &= ~(1<<12 | 1<<14 | 1<<13 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19);
+	GPIOC->ODR |= (1<<6 |1<< 8 );
+	
+	// B outputs
+	//USING  PB6789 AS OUTPUTS
+	GPIOB->MODER |= (1<< 12| 1<< 14| 1<< 16| 1<< 18); //general out
+	GPIOB->OTYPER |= (1<<6|1<<7|1<<8|1<<9);//open drain
+	GPIOB->OSPEEDR &= ~ (1<< 12 | 1<<14 | 1<<16 | 1<<18);
+	GPIOB->PUPDR &= ~(1<<12| 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18| 1<<19);
+	GPIOB->ODR |= ( 1<<6|1<<8 );
+	//PB9 is R
+	//PB8 is L
+	//PB7 is Forward
+	//PB6 is Backward
 				
-        GPIOC->MODER |= (1<<12 | 1<<14 | 1<<16 | 1<<18);
-        GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
-        GPIOC->OSPEEDR &= ~(1<<12 | 1<<14 | 1<<16 | 1<<18);
-        GPIOC->PUPDR &= ~(1<<12 | 1<<14 | 1<<13 | 1<<15 | 1<<16 | 1<<17 | 1<<18 | 1<<19);
-        GPIOC->ODR |= (1<<6 |1<< 8 );
 				
-				//USING  PB6789 AS OUTPUTS
-				GPIOB->MODER |= (1<< 12| 1<< 14| 1<< 16| 1<< 18); //general out
-				GPIOB->OTYPER |= (1<<6|1<<7|1<<8|1<<9);//open drain
-				GPIOB->OSPEEDR &= ~ (1<< 12 | 1<<14 | 1<<16 | 1<<18);
-				GPIOB->PUPDR &= ~(1<<12| 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18| 1<<19);
-				GPIOB->ODR |= ( 1<<6|1<<8 );
-				//PB9 is R
-				//PB8 is L
-				//PB7 is Forward
-				//PB6 is Backward
-				
-				
-				
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
 	uint32_t debouncer = 0;
 	uint32_t input_signal = 0;
 	while(1){
-            debouncer = (debouncer << 1); // Always shift every loop iteration
-            input_signal = (GPIOA->IDR)&(0x01);
+		debouncer = (debouncer << 1); // Always shift every loop iteration
+		
+		input_signal = (GPIOA->IDR)&(0x01);			// check for the user button input
 
-            if (input_signal) { // If input signal is set/high
-                debouncer |= 0x01; // Set lowest bit of bit-vector
-            }
-            if (debouncer == 0x7FFFFFFF) {
-             //This code triggers only once when transitioning to steady high!
-                GPIOB->ODR ^= (1<<6);
-								GPIOC->ODR ^= (1<<6);
-							
-							GPIOB->ODR ^= (1<<7);
-								GPIOC->ODR ^= (1<<7);
-							
-							GPIOB->ODR ^= (1<<8);
-								GPIOC->ODR ^= (1<<8);
-							
-							GPIOB->ODR ^= (1<<9);
-								GPIOC->ODR ^= (1<<9);
-            }
-            // When button is bouncing the bit-vector value is random since bits are set when
-            //the button is high and not when it bounces low.
-        }
+		if (input_signal) { // If input signal is set/high
+			debouncer |= 0x01; // Set lowest bit of bit-vector
+		}
+		
+		  //This code triggers only once when transitioning to steady high!
+		if (debouncer == 0x7FFFFFFF) {
+			// flip the outputs when the user button is pushed
+			GPIOB->ODR ^= (1<<6);
+			GPIOC->ODR ^= (1<<6);
+			
+			GPIOB->ODR ^= (1<<7);
+			GPIOC->ODR ^= (1<<7);
+			
+			GPIOB->ODR ^= (1<<8);
+			GPIOC->ODR ^= (1<<8);
+			
+			GPIOB->ODR ^= (1<<9);
+			GPIOC->ODR ^= (1<<9);
+		}
+		// When button is bouncing the bit-vector value is random since bits are set when
+		//the button is high and not when it bounces low.
+	}
 }
 
+
+
+
+
+/*-----------------KEIL GENERATED CODE---------------------------------------------------------------------------------------------------*/
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -177,10 +127,6 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 }
-
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
