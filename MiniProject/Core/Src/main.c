@@ -68,7 +68,7 @@ int main(void) {
 			debouncer |= 0x01; // Set lowest bit of bit-vector
 		}
 		
-		  //This code triggers only once when transitioning to steady high!
+		//This code triggers only once when transitioning to steady high!
 		if (debouncer == 0x7FFFFFFF) {
 			// flip the outputs when the user button is pushed
 			GPIOB->ODR ^= (1<<6);
