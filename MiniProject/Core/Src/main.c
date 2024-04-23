@@ -20,6 +20,191 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 
+/**/
+void setupPins() {
+	// enable GPIOB and GPIOC in RCC (5.2 Q1)
+	RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN;
+
+	// Set PB11 to alternate function/open-drain output type, I2C2_SDA (5.2 Q2)
+	// AF1
+	GPIOB->AFR[1] |= (0x01 << GPIO_AFRH_AFSEL11_Pos);
+	GPIOB->MODER |= GPIO_MODER_MODER11_1; 		// set the alternate function mode
+	GPIOB->OTYPER |= GPIO_OTYPER_OT_11;
+
+	// AF5 PB13
+	// Set PB13 to alternate function/open-drain output type, I2C2_SCL (5.2 Q3)
+	GPIOB->AFR[1] |= (0x05 << GPIO_AFRH_AFSEL13_Pos);
+	GPIOB->MODER |= GPIO_MODER_MODER13_1; 		// set the alternate function mode
+	GPIOB->OTYPER |= GPIO_OTYPER_OT_13;
+	
+	// set PB14 to output mode, push-pull output type, set to high (5.2 Q4)
+	GPIOB->MODER |= GPIO_MODER_MODER14_0;
+	GPIOB->OTYPER &= ~(GPIO_OTYPER_OT_14);
+	GPIOB->ODR |= GPIO_ODR_14;
+
+	GPIOB->PUPDR |= (1 << 22 | 1 << 26);
+
+	// set PC0 to output mode, push-pull output type, set to high (5.2 Q5)
+	GPIOC->MODER |= GPIO_MODER_MODER0_0;
+	GPIOC->OTYPER &= ~(GPIO_OTYPER_OT_0);
+	GPIOC->ODR |= GPIO_ODR_0;
+}
+
+/**/
+void setupI2C() {
+	// enable i2c2 in RCC (5.3 Q1)
+  RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+	
+	// set timing parameters (5.3 Q2)
+	I2C2->TIMINGR =  (0x1 << 28)		// prescaler = 1
+								|  (0x4 << 20)		// SCLDEL = 0x4
+								|  (0x2 << 16)		// SDADEL = 0x2
+								|  (0xF << 8)		// SCLH = 0xF
+								|  (0x13);				// CSLL = 0x13
+
+	// Enable the I2C peripheral using the PE bit in the CR1 register (5.3 Q3)
+	I2C2->CR1 |= I2C_CR1_PE;
+}
+
+void initgyro(){
+	//gyro
+	GPIOC->BSRR = (1<<0);
+}
+
+/**/
+int i2ctransfer(char reg, char info , volatile char* read){ //slave address = 0x69
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (2<<16) //numbytes == 1
+						| (0x69<<1); //slave address = 0x69
+	I2C2->CR2 &= ~(1<<10); //write transfer (bit 10 is 0)
+	I2C2->CR2 |= (1<<13);//start bit
+
+	while(1){ //wait for TXIS
+		if ((I2C2->ISR & (1<<1))){ break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+
+	I2C2->TXDR = reg; //addr
+
+	while(1){ //wait for TXIS
+		if ((I2C2->ISR & (1<<1))){ break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+	
+	I2C2->TXDR = info;
+	
+	while (1){
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}
+
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (1<<16) //numbytes == 1
+						| (0x69<<1); //slave address = 0x69
+	I2C2->CR2 |= (1<<10); //READ transfer (bit 10 is 1)
+	I2C2->CR2 |= (1<<13);//start bit set
+	
+	while (1){
+		if (I2C2->ISR & I2C_ISR_RXNE){break;}
+		else if (I2C2->ISR & I2C_ISR_NACKF) {
+			//error
+			return 1;
+		}
+	}
+
+	while (1){
+		if (I2C2->ISR & I2C_ISR_TC){break;}
+	}
+	
+	*(read) = I2C2->RXDR;
+	I2C2->CR2 |= (1<<14);//STOP
+	
+	return 0;
+}
+
+
+
+int doublei2c(char reg, volatile int16_t* read){ //collects two nums
+
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	
+	I2C2->CR2 |= (1<<16) //numbytes == 1
+						| (0x69<<1); //slave address = 0x69
+	I2C2->CR2 &= ~(1<<10); //write transfer (bit 10 is 0)
+	I2C2->CR2 |= (1<<13);//start bit
+		
+	while(1){ //wait for TXIS
+		if ((I2C2->ISR & (1<<1))){ break;}
+			else if (I2C2->ISR & I2C_ISR_NACKF) {
+				//error
+				return 1;
+			}
+	}
+
+	I2C2->TXDR = reg; //addr
+	while (1){
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}
+
+	//READ NOW.
+	I2C2->CR2 &= ~((0x3FF << 0) | (0x7F << 16));
+	I2C2->CR2 |= (2<<16) //numbytes == 1
+						| (0x69<<1); //slave address = 0x69
+	I2C2->CR2 |= (1<<10); //READ transfer (bit 10 is 1)
+	I2C2->CR2 |= (1<<13);//start bit set
+
+	int8_t h, l;
+	int16_t result;
+	
+	for(uint32_t i = 0; i < 2; i++){
+		GPIOC->ODR &= ~(1<<9);
+		while (1){
+			if (I2C2->ISR & I2C_ISR_RXNE){break;}
+			else if (I2C2->ISR & I2C_ISR_NACKF) {
+				//error
+				return 1;
+			}
+		}
+		if (i == 0){
+			l = I2C2->RXDR;
+		}
+		else{
+			h = I2C2->RXDR;
+		}
+	}
+
+	while (1){
+		GPIOC->ODR &= ~(1<<9);
+		if (I2C2->ISR & I2C_ISR_TC) {break;} //wait until TC flag is set
+	}
+	I2C2->CR2 |= (1<<14);//STOP
+	GPIOC->ODR &= ~(1<<6);
+	
+	GPIOC->ODR &= ~(1<<6);
+	GPIOC->ODR &= ~(1<<7);
+	GPIOC->ODR &= ~(1<<8);
+	GPIOC->ODR &= ~(1<<9);
+	
+	result = (h << 8) | (l);
+	*(read) = result;
+	
+	return 0;
+}
+
+void resetLEDs(){
+	GPIOC->ODR &= ~(GPIO_ODR_6);
+	GPIOC->ODR &= ~(GPIO_ODR_7);
+	GPIOC->ODR &= ~(GPIO_ODR_8);
+	GPIOC->ODR &= ~(GPIO_ODR_9);
+}
+int32_t count = 0;
+uint32_t debouncer = 0;
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -56,11 +241,36 @@ int main(void) {
 	//PB7 is Forward
 	//PB6 is Backward
 				
-				
-	uint32_t debouncer = 0;
+	setupPins();
+	setupI2C();
+	initgyro();
+			
+	volatile char read, info, reg;
+
+	reg = 0x20;				// gyroscope CTRL_REG1 address
+	info = 0x0B; 			// code to initialize 
+
+	i2ctransfer(reg, info, &read);//reg info read
+
+	
 	uint32_t input_signal = 0;
+	volatile int16_t x;
+
 	while(1){
 		debouncer = (debouncer << 1); // Always shift every loop iteration
+
+		HAL_Delay(50);
+		//collect x
+		doublei2c(0xA8, &x); //reg read
+
+		count += x;
+		//decide lights
+		const int16_t senseThresh = 0x01FF;
+
+		const int16_t countThresh = 0x0aFF;
+		
+		if (count > countThresh) {GPIOC->ODR |= (1<<9);} else {GPIOC->ODR &= ~(1<<9);} //green
+		if ((count < 0-countThresh)) {GPIOC->ODR |= (1<<8);} else {GPIOC->ODR &= ~(1<<8);} //orange, backwards
 		
 		input_signal = (GPIOA->IDR)&(0x01);			// check for the user button input
 
@@ -70,24 +280,39 @@ int main(void) {
 		
 		//This code triggers only once when transitioning to steady high!
 		if (debouncer == 0x7FFFFFFF) {
+			count = 0;
+			x = 0;
+			resetLEDs();
 			// flip the outputs when the user button is pushed
 			GPIOB->ODR ^= (1<<6);
-			GPIOC->ODR ^= (1<<6);
+//			GPIOC->ODR ^= (1<<6);
 			
 			GPIOB->ODR ^= (1<<7);
-			GPIOC->ODR ^= (1<<7);
+//			GPIOC->ODR ^= (1<<7);
 			
 			GPIOB->ODR ^= (1<<8);
-			GPIOC->ODR ^= (1<<8);
+//			GPIOC->ODR ^= (1<<8);
 			
 			GPIOB->ODR ^= (1<<9);
-			GPIOC->ODR ^= (1<<9);
+//			GPIOC->ODR ^= (1<<9);
 		}
 		// When button is bouncing the bit-vector value is random since bits are set when
 		//the button is high and not when it bounces low.
 	}
 }
 
+
+
+void HAL_SYSTICK_Callback(void){
+	debouncer = debouncer << 1;
+	if (GPIOA->IDR & (1<<0)){
+		debouncer |= 0x1;
+	}
+	if (debouncer == 0x7FFFFFFF){
+		count = 0;
+	}
+	
+}
 
 
 
