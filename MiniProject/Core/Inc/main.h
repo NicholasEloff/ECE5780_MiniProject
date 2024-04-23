@@ -33,7 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
-
+void HAL_SYSTICK_Callback(void);
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 

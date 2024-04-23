@@ -257,7 +257,7 @@ int main(void) {
 	volatile int16_t x;
 
 	while(1){
-		debouncer = (debouncer << 1); // Always shift every loop iteration
+//		debouncer = (debouncer << 1); // Always shift every loop iteration
 
 		HAL_Delay(50);
 		//collect x
@@ -272,30 +272,30 @@ int main(void) {
 		if (count > countThresh) {GPIOC->ODR |= (1<<9);} else {GPIOC->ODR &= ~(1<<9);} //green
 		if ((count < 0-countThresh)) {GPIOC->ODR |= (1<<8);} else {GPIOC->ODR &= ~(1<<8);} //orange, backwards
 		
-		input_signal = (GPIOA->IDR)&(0x01);			// check for the user button input
+//		input_signal = (GPIOA->IDR)&(0x01);			// check for the user button input
 
-		if (input_signal) { // If input signal is set/high
-			debouncer |= 0x01; // Set lowest bit of bit-vector
-		}
+	//	if (input_signal) { // If input signal is set/high
+//			debouncer |= 0x01; // Set lowest bit of bit-vector
+//		}
 		
 		//This code triggers only once when transitioning to steady high!
-		if (debouncer == 0x7FFFFFFF) {
-			count = 0;
-			x = 0;
-			resetLEDs();
+//		if (debouncer == 0x7FFFFFFF) {
+//			count = 0;
+//			x = 0;
+//			resetLEDs();
 			// flip the outputs when the user button is pushed
-			GPIOB->ODR ^= (1<<6);
+//			GPIOB->ODR ^= (1<<6);
 //			GPIOC->ODR ^= (1<<6);
 			
-			GPIOB->ODR ^= (1<<7);
+//			GPIOB->ODR ^= (1<<7);
 //			GPIOC->ODR ^= (1<<7);
 			
-			GPIOB->ODR ^= (1<<8);
+//			GPIOB->ODR ^= (1<<8);
 //			GPIOC->ODR ^= (1<<8);
 			
-			GPIOB->ODR ^= (1<<9);
+//			GPIOB->ODR ^= (1<<9);
 //			GPIOC->ODR ^= (1<<9);
-		}
+//		}
 		// When button is bouncing the bit-vector value is random since bits are set when
 		//the button is high and not when it bounces low.
 	}
