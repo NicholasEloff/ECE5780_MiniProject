@@ -201,8 +201,14 @@ void resetLEDs(){
 	GPIOC->ODR &= ~(GPIO_ODR_7);
 	GPIOC->ODR &= ~(GPIO_ODR_8);
 	GPIOC->ODR &= ~(GPIO_ODR_9);
+
+	GPIOC->ODR |= (GPIO_ODR_6);
+	GPIOC->ODR |= (GPIO_ODR_7);
+	GPIOC->ODR |= (GPIO_ODR_8);
+	GPIOC->ODR |= (GPIO_ODR_9);
 }
 int32_t count = 0;
+int32_t county = 0;
 uint32_t debouncer = 0;
 
 /**
@@ -222,6 +228,10 @@ int main(void) {
 	GPIOA->OSPEEDR &= ~(1<<0);
 	GPIOA->PUPDR  |= (1<<1);
 	
+	GPIOA->OTYPER |= (1<<1 | 1<<2);
+	GPIOA->OSPEEDR &= ~ (1<<2 | 1<<4);
+	GPIOA->PUPDR &= ~(1<<2 | 1<<3 | 1<<4 | 1<<5);
+	
 	// C outputs - turning on the LEDs to correspond the the outputs
 	GPIOC->MODER |= (1<<12 | 1<<14 | 1<<16 | 1<<18);
 	GPIOC->OTYPER &= ~(1<<6 | 1<<7 | 1<<8 | 1<<9);
@@ -235,11 +245,11 @@ int main(void) {
 	GPIOB->OTYPER |= (1<<6|1<<7|1<<8|1<<9);//open drain
 	GPIOB->OSPEEDR &= ~ (1<< 12 | 1<<14 | 1<<16 | 1<<18);
 	GPIOB->PUPDR &= ~(1<<12| 1<<13 | 1<<14 | 1<<15 | 1<<16 | 1<<17 | 1<<18| 1<<19);
-	GPIOB->ODR |= ( 1<<6|1<<8 );
-	//PB9 is R
-	//PB8 is L
-	//PB7 is Forward
-	//PB6 is Backward
+	GPIOB->ODR &= ~( 1<<6 | 1<<7 | 1<<8 | 1<<9 );
+	//PB9 is backward
+	//PB8 is forward
+	//PB7 is right
+	//PB6 is left
 				
 	setupPins();
 	setupI2C();
@@ -254,67 +264,77 @@ int main(void) {
 
 	
 	uint32_t input_signal = 0;
-	volatile int16_t x;
+	volatile int16_t x, y;
 
 	while(1){
-//		debouncer = (debouncer << 1); // Always shift every loop iteration
+		debouncer = (debouncer << 1); // Always shift every loop iteration
 
 		HAL_Delay(50);
 		//collect x
 		doublei2c(0xA8, &x); //reg read
+		// collect y
+		doublei2c(0xAA, &y); //reg read
 
 		count += x;
-		//decide lights
-		const int16_t senseThresh = 0x01FF;
+		county += y;
 
+		//decide lights
 		const int16_t countThresh = 0x0aFF;
 		
-		if (count > countThresh) {GPIOC->ODR |= (1<<9);} else {GPIOC->ODR &= ~(1<<9);} //green
-		if ((count < 0-countThresh)) {GPIOC->ODR |= (1<<8);} else {GPIOC->ODR &= ~(1<<8);} //orange, backwards
+		// green forward
+		if (count < 0-countThresh) {
+			GPIOC->ODR |= (1<<8);
+			GPIOB->ODR &= ~(1<<8);
+		} 
+		else {
+			GPIOC->ODR &= ~(1<<8);
+			GPIOB->ODR |= (1<<8);
+		} 
 		
-//		input_signal = (GPIOA->IDR)&(0x01);			// check for the user button input
+		// orange backward
+		if (count > countThresh) {
+			GPIOC->ODR |= (1<<9);
+			GPIOB->ODR &= ~(1<<9);
+		} else {
+			GPIOC->ODR &= ~(1<<9);
+			GPIOB->ODR |= (1<<9);
+		} 
 
-	//	if (input_signal) { // If input signal is set/high
-//			debouncer |= 0x01; // Set lowest bit of bit-vector
-//		}
+		// blue
+		if (county < 0-countThresh) {
+			GPIOC->ODR |= (1<<7);
+			GPIOB->ODR &= ~(1<<7);
+		} 
+		else {
+			GPIOC->ODR &= ~(1<<7);
+			GPIOB->ODR |= (1<<7);
+		} 
+		
+		// red
+		if (county > countThresh) {
+			GPIOC->ODR |= (1<<6);
+			GPIOB->ODR &= ~(1<<6);
+		} else {
+			GPIOC->ODR &= ~(1<<6);
+			GPIOB->ODR |= (1<<6);
+		} 
+
+		input_signal = (GPIOA->IDR)&(0x01);			// check for the user button input
+
+		if (input_signal) { // If input signal is set/high
+			debouncer |= 0x01; // Set lowest bit of bit-vector
+		}
 		
 		//This code triggers only once when transitioning to steady high!
-//		if (debouncer == 0x7FFFFFFF) {
-//			count = 0;
-//			x = 0;
-//			resetLEDs();
-			// flip the outputs when the user button is pushed
-//			GPIOB->ODR ^= (1<<6);
-//			GPIOC->ODR ^= (1<<6);
-			
-//			GPIOB->ODR ^= (1<<7);
-//			GPIOC->ODR ^= (1<<7);
-			
-//			GPIOB->ODR ^= (1<<8);
-//			GPIOC->ODR ^= (1<<8);
-			
-//			GPIOB->ODR ^= (1<<9);
-//			GPIOC->ODR ^= (1<<9);
-//		}
+		if (debouncer == 0x7FFFFFFF) {
+			count = 0;
+			resetLEDs();
+			county = 0;
+		}
 		// When button is bouncing the bit-vector value is random since bits are set when
 		//the button is high and not when it bounces low.
 	}
 }
-
-
-
-void HAL_SYSTICK_Callback(void){
-	debouncer = debouncer << 1;
-	if (GPIOA->IDR & (1<<0)){
-		debouncer |= 0x1;
-	}
-	if (debouncer == 0x7FFFFFFF){
-		count = 0;
-	}
-	
-}
-
-
 
 
 /*-----------------KEIL GENERATED CODE---------------------------------------------------------------------------------------------------*/
