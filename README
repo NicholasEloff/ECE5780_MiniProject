@@ -23,7 +23,8 @@ took out the code that toggled them, everything would break. Carter suggested we
 the code and this solved our problem. We also encountered a problem that the gyroscope would desync very quickly and we had to 
 add some code to rectify this. After this problem was solved we needed to hook the gyroscope to the 5v pins that were wired to
 the transmitter leads. This proved to be challenging in making this work. Beverly was the MVP when it came to figuring out the gyroscope
-code. She was able to figure out the bugs that were in the orginal code and hook everything up to the car.
+code. She was able to figure out the bugs that were in the orginal code and hook everything up to the car. She spent multiple hours
+debugging and trying new things to get it to work.
 
 In the end we were able to accomplish our original goal of making a car that was controlled by hand movements with data coming
 from the gyroscope. It was a fun, frustrating, and good project to learn from. 
