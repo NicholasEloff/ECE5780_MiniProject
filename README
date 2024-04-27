@@ -28,3 +28,17 @@ debugging and trying new things to get it to work.
 
 In the end we were able to accomplish our original goal of making a car that was controlled by hand movements with data coming
 from the gyroscope. It was a fun, frustrating, and good project to learn from. 
+
+# How to Setup/Use
+You will need the transmitter and RC car, a STM32F072RBT6, a breadboard (or two), jumper wires, a handful of 10k resistors, and sufficient batteries.
+From the transmitter PCB, there will be 4 bendable contacts (2 of them will be connected to each other). Underneath each of these flexible parts, there is a smaller
+contact on the pcb which looks like a staple. To either one of the bendable contacts(it will work for either one, and they do not need to be connected), 
+you will solder a jumper wire to one of them, and connect the other end to a GND pin. 
+To each of these four "staples", solder a jumper wire to them and connect them to a breadboard. for each of those, connect a 10k resistor in series to one of the 5v tolerant pins
+(in our code, we used PB6, 7, 8, 9). You will also need to connect pins with eachother and use 10k resistors for i2c communication for the gyro. 
+
+Our development environment for this project was Keil uVision5. You can open the project file to open all the files and be able to download the built files to the board. 
+
+To use the project, have the car on and powered, have the transmitter powered with a 9 volt battery, and have the STM32 powered. 
+once the board has been reset, then you can tilt the board in 4 directions to send commands to the RC car. The corresponding light will depend on the direction you rotated the board.
+once a light turns on, then the transmitter should be sending information to the RC car commanding it to turn or drive. 
